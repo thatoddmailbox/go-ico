@@ -217,7 +217,7 @@ func decodeBMP32(data []byte, width, height int) (image.Image, error) {
 			r := data[pixelOffset+2]
 			a := data[pixelOffset+3]
 
-			img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: a})
+			img.Set(x, y, color.NRGBA{R: r, G: g, B: b, A: a})
 		}
 	}
 
@@ -245,7 +245,7 @@ func decodeBMP32(data []byte, width, height int) (image.Image, error) {
 					if isTransparent == 1 {
 						// AND mask bit is 1, so pixel should be fully transparent
 						currentColor := img.RGBAAt(x, y)
-						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+						img.Set(x, y, color.NRGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
 					}
 				}
 			}
@@ -283,7 +283,7 @@ func decodeBMP24(data []byte, width, height int) (image.Image, error) {
 			g := data[pixelOffset+1]
 			r := data[pixelOffset+2]
 
-			img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+			img.Set(x, y, color.NRGBA{R: r, G: g, B: b, A: 255})
 		}
 	}
 
@@ -311,7 +311,7 @@ func decodeBMP24(data []byte, width, height int) (image.Image, error) {
 					if isTransparent == 1 {
 						// AND mask bit is 1, so pixel should be fully transparent
 						currentColor := img.RGBAAt(x, y)
-						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+						img.Set(x, y, color.NRGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
 					}
 				}
 			}
@@ -329,14 +329,14 @@ func decodeBMP8(data []byte, width, height int, headerSize int) (image.Image, er
 		return nil, fmt.Errorf("BMP palette data truncated")
 	}
 
-	palette := make([]color.RGBA, 256)
+	palette := make([]color.NRGBA, 256)
 	for i := 0; i < 256; i++ {
 		offset := paletteOffset + i*4
 		b := data[offset]
 		g := data[offset+1]
 		r := data[offset+2]
 		// Skip reserved byte at offset+3
-		palette[i] = color.RGBA{R: r, G: g, B: b, A: 255}
+		palette[i] = color.NRGBA{R: r, G: g, B: b, A: 255}
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -385,7 +385,7 @@ func decodeBMP8(data []byte, width, height int, headerSize int) (image.Image, er
 					if isTransparent == 1 {
 						// AND mask bit is 1, so pixel should be fully transparent
 						currentColor := img.RGBAAt(x, y)
-						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+						img.Set(x, y, color.NRGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
 					}
 				}
 			}
@@ -403,13 +403,13 @@ func decodeBMP4(data []byte, width, height int, headerSize int) (image.Image, er
 		return nil, fmt.Errorf("BMP palette data truncated")
 	}
 
-	palette := make([]color.RGBA, 16)
+	palette := make([]color.NRGBA, 16)
 	for i := 0; i < 16; i++ {
 		offset := paletteOffset + i*4
 		b := data[offset]
 		g := data[offset+1]
 		r := data[offset+2]
-		palette[i] = color.RGBA{R: r, G: g, B: b, A: 255}
+		palette[i] = color.NRGBA{R: r, G: g, B: b, A: 255}
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -467,7 +467,7 @@ func decodeBMP4(data []byte, width, height int, headerSize int) (image.Image, er
 					if isTransparent == 1 {
 						// AND mask bit is 1, so pixel should be fully transparent
 						currentColor := img.RGBAAt(x, y)
-						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+						img.Set(x, y, color.NRGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
 					}
 				}
 			}
@@ -485,13 +485,13 @@ func decodeBMP1(data []byte, width, height int, headerSize int) (image.Image, er
 		return nil, fmt.Errorf("BMP palette data truncated")
 	}
 
-	palette := make([]color.RGBA, 2)
+	palette := make([]color.NRGBA, 2)
 	for i := 0; i < 2; i++ {
 		offset := paletteOffset + i*4
 		b := data[offset]
 		g := data[offset+1]
 		r := data[offset+2]
-		palette[i] = color.RGBA{R: r, G: g, B: b, A: 255}
+		palette[i] = color.NRGBA{R: r, G: g, B: b, A: 255}
 	}
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -543,7 +543,7 @@ func decodeBMP1(data []byte, width, height int, headerSize int) (image.Image, er
 					if isTransparent == 1 {
 						// AND mask bit is 1, so pixel should be fully transparent
 						currentColor := img.RGBAAt(x, y)
-						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+						img.Set(x, y, color.NRGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
 					}
 				}
 			}
