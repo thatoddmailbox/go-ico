@@ -1,3 +1,4 @@
 *.ico
 *.png
 ico-extract
+!cmd/ico-extract
