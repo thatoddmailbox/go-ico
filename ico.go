@@ -190,16 +190,18 @@ func decodeBMP(data []byte, entry DirectoryEntry) (image.Image, error) {
 func decodeBMP32(data []byte, width, height int) (image.Image, error) {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
-	rowSize := width * 4
-	rowPadding := (4 - (rowSize % 4)) % 4
-	totalRowSize := rowSize + rowPadding
+	// XOR mask (color data)
+	xorRowSize := width * 4
+	xorRowPadding := (4 - (xorRowSize % 4)) % 4
+	xorTotalRowSize := xorRowSize + xorRowPadding
 
+	// Read XOR mask first
 	for y := 0; y < height; y++ {
 		// BMP rows are stored bottom-to-top
 		srcY := height - 1 - y
-		rowOffset := srcY * totalRowSize
+		rowOffset := srcY * xorTotalRowSize
 
-		if rowOffset+rowSize > len(data) {
+		if rowOffset+xorRowSize > len(data) {
 			return nil, fmt.Errorf("BMP data truncated at row %d", y)
 		}
 
@@ -219,6 +221,37 @@ func decodeBMP32(data []byte, width, height int) (image.Image, error) {
 		}
 	}
 
+	// AND mask (transparency mask) - 1 bit per pixel
+	andMaskOffset := height * xorTotalRowSize
+	andRowSize := (width + 7) / 8 // 8 pixels per byte
+	andRowPadding := (4 - (andRowSize % 4)) % 4
+	andTotalRowSize := andRowSize + andRowPadding
+
+	// Apply AND mask if there's enough data
+	if andMaskOffset+height*andTotalRowSize <= len(data) {
+		for y := 0; y < height; y++ {
+			// AND mask rows are also stored bottom-to-top
+			srcY := height - 1 - y
+			rowOffset := andMaskOffset + srcY*andTotalRowSize
+
+			for x := 0; x < width; x++ {
+				byteOffset := rowOffset + x/8
+				bitIndex := 7 - (x % 8)
+
+				if byteOffset < len(data) {
+					maskByte := data[byteOffset]
+					isTransparent := (maskByte >> bitIndex) & 1
+
+					if isTransparent == 1 {
+						// AND mask bit is 1, so pixel should be fully transparent
+						currentColor := img.RGBAAt(x, y)
+						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+					}
+				}
+			}
+		}
+	}
+
 	return img, nil
 }
 
@@ -226,15 +259,17 @@ func decodeBMP32(data []byte, width, height int) (image.Image, error) {
 func decodeBMP24(data []byte, width, height int) (image.Image, error) {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
-	rowSize := width * 3
-	rowPadding := (4 - (rowSize % 4)) % 4
-	totalRowSize := rowSize + rowPadding
+	// XOR mask (color data)
+	xorRowSize := width * 3
+	xorRowPadding := (4 - (xorRowSize % 4)) % 4
+	xorTotalRowSize := xorRowSize + xorRowPadding
 
+	// Read XOR mask first
 	for y := 0; y < height; y++ {
 		srcY := height - 1 - y
-		rowOffset := srcY * totalRowSize
+		rowOffset := srcY * xorTotalRowSize
 
-		if rowOffset+rowSize > len(data) {
+		if rowOffset+xorRowSize > len(data) {
 			return nil, fmt.Errorf("BMP data truncated at row %d", y)
 		}
 
@@ -249,6 +284,37 @@ func decodeBMP24(data []byte, width, height int) (image.Image, error) {
 			r := data[pixelOffset+2]
 
 			img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+		}
+	}
+
+	// AND mask (transparency mask) - 1 bit per pixel
+	andMaskOffset := height * xorTotalRowSize
+	andRowSize := (width + 7) / 8 // 8 pixels per byte
+	andRowPadding := (4 - (andRowSize % 4)) % 4
+	andTotalRowSize := andRowSize + andRowPadding
+
+	// Apply AND mask if there's enough data
+	if andMaskOffset+height*andTotalRowSize <= len(data) {
+		for y := 0; y < height; y++ {
+			// AND mask rows are also stored bottom-to-top
+			srcY := height - 1 - y
+			rowOffset := andMaskOffset + srcY*andTotalRowSize
+
+			for x := 0; x < width; x++ {
+				byteOffset := rowOffset + x/8
+				bitIndex := 7 - (x % 8)
+
+				if byteOffset < len(data) {
+					maskByte := data[byteOffset]
+					isTransparent := (maskByte >> bitIndex) & 1
+
+					if isTransparent == 1 {
+						// AND mask bit is 1, so pixel should be fully transparent
+						currentColor := img.RGBAAt(x, y)
+						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+					}
+				}
+			}
 		}
 	}
 
@@ -280,6 +346,7 @@ func decodeBMP8(data []byte, width, height int, headerSize int) (image.Image, er
 	rowPadding := (4 - (rowSize % 4)) % 4
 	totalRowSize := rowSize + rowPadding
 
+	// Read XOR mask (color data)
 	for y := 0; y < height; y++ {
 		srcY := height - 1 - y
 		rowOffset := pixelDataOffset + srcY*totalRowSize
@@ -291,6 +358,37 @@ func decodeBMP8(data []byte, width, height int, headerSize int) (image.Image, er
 
 			paletteIndex := data[rowOffset+x]
 			img.Set(x, y, palette[paletteIndex])
+		}
+	}
+
+	// AND mask (transparency mask) - 1 bit per pixel
+	andMaskOffset := pixelDataOffset + height*totalRowSize
+	andRowSize := (width + 7) / 8 // 8 pixels per byte
+	andRowPadding := (4 - (andRowSize % 4)) % 4
+	andTotalRowSize := andRowSize + andRowPadding
+
+	// Apply AND mask if there's enough data
+	if andMaskOffset+height*andTotalRowSize <= len(data) {
+		for y := 0; y < height; y++ {
+			// AND mask rows are also stored bottom-to-top
+			srcY := height - 1 - y
+			rowOffset := andMaskOffset + srcY*andTotalRowSize
+
+			for x := 0; x < width; x++ {
+				byteOffset := rowOffset + x/8
+				bitIndex := 7 - (x % 8)
+
+				if byteOffset < len(data) {
+					maskByte := data[byteOffset]
+					isTransparent := (maskByte >> bitIndex) & 1
+
+					if isTransparent == 1 {
+						// AND mask bit is 1, so pixel should be fully transparent
+						currentColor := img.RGBAAt(x, y)
+						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+					}
+				}
+			}
 		}
 	}
 
@@ -345,6 +443,37 @@ func decodeBMP4(data []byte, width, height int, headerSize int) (image.Image, er
 		}
 	}
 
+	// AND mask (transparency mask) - 1 bit per pixel
+	andMaskOffset := pixelDataOffset + height*totalRowSize
+	andRowSize := (width + 7) / 8 // 8 pixels per byte
+	andRowPadding := (4 - (andRowSize % 4)) % 4
+	andTotalRowSize := andRowSize + andRowPadding
+
+	// Apply AND mask if there's enough data
+	if andMaskOffset+height*andTotalRowSize <= len(data) {
+		for y := 0; y < height; y++ {
+			// AND mask rows are also stored bottom-to-top
+			srcY := height - 1 - y
+			rowOffset := andMaskOffset + srcY*andTotalRowSize
+
+			for x := 0; x < width; x++ {
+				byteOffset := rowOffset + x/8
+				bitIndex := 7 - (x % 8)
+
+				if byteOffset < len(data) {
+					maskByte := data[byteOffset]
+					isTransparent := (maskByte >> bitIndex) & 1
+
+					if isTransparent == 1 {
+						// AND mask bit is 1, so pixel should be fully transparent
+						currentColor := img.RGBAAt(x, y)
+						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+					}
+				}
+			}
+		}
+	}
+
 	return img, nil
 }
 
@@ -387,6 +516,37 @@ func decodeBMP1(data []byte, width, height int, headerSize int) (image.Image, er
 			paletteIndex := (pixelByte >> bitIndex) & 1
 
 			img.Set(x, y, palette[paletteIndex])
+		}
+	}
+
+	// AND mask (transparency mask) - 1 bit per pixel
+	andMaskOffset := pixelDataOffset + height*totalRowSize
+	andRowSize := (width + 7) / 8 // 8 pixels per byte
+	andRowPadding := (4 - (andRowSize % 4)) % 4
+	andTotalRowSize := andRowSize + andRowPadding
+
+	// Apply AND mask if there's enough data
+	if andMaskOffset+height*andTotalRowSize <= len(data) {
+		for y := 0; y < height; y++ {
+			// AND mask rows are also stored bottom-to-top
+			srcY := height - 1 - y
+			rowOffset := andMaskOffset + srcY*andTotalRowSize
+
+			for x := 0; x < width; x++ {
+				byteOffset := rowOffset + x/8
+				bitIndex := 7 - (x % 8)
+
+				if byteOffset < len(data) {
+					maskByte := data[byteOffset]
+					isTransparent := (maskByte >> bitIndex) & 1
+
+					if isTransparent == 1 {
+						// AND mask bit is 1, so pixel should be fully transparent
+						currentColor := img.RGBAAt(x, y)
+						img.Set(x, y, color.RGBA{R: currentColor.R, G: currentColor.G, B: currentColor.B, A: 0})
+					}
+				}
+			}
 		}
 	}
 
