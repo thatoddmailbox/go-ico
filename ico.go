@@ -569,3 +569,42 @@ func DecodeConfig(r io.Reader) (Config, error) {
 		Count:  int(header.Count),
 	}, nil
 }
+
+// decode returns the best (highest resolution) image for image package compatibility
+func decode(r io.Reader) (image.Image, error) {
+	icoFile, err := Decode(r)
+	if err != nil {
+		return nil, err
+	}
+
+	bestImage := icoFile.GetBestImage()
+	if bestImage == nil {
+		return nil, fmt.Errorf("no images found in ICO file")
+	}
+
+	return bestImage, nil
+}
+
+// decodeConfig returns config for the best image
+func decodeConfig(r io.Reader) (image.Config, error) {
+	config, err := DecodeConfig(r)
+	if err != nil {
+		return image.Config{}, err
+	}
+
+	return image.Config{
+		ColorModel: color.RGBAModel, // ICO typically supports RGBA
+		Width:      config.Width,
+		Height:     config.Height,
+	}, nil
+}
+
+func init() {
+	// Register ICO format with the image package
+	image.RegisterFormat(
+		"ico",              // format name
+		"\x00\x00\x01\x00", // ICO magic header bytes
+		decode,             // decode function
+		decodeConfig,       // decodeConfig function
+	)
+}

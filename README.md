@@ -5,6 +5,7 @@ A Go library for decoding ICO (Icon) files, commonly used for favicons and Windo
 ## Features
 
 - **Pure Go implementation** - No external dependencies outside the standard library
+- **Standard library integration** - Automatically registers with Go's `image` package
 - **Multiple image formats** - Supports both BMP and PNG images within ICO files
 - **Various color depths** - Handles 1-bit, 4-bit, 8-bit, 24-bit, and 32-bit images
 - **Multi-resolution support** - ICO files can contain multiple images at different sizes
@@ -18,6 +19,40 @@ go get github.com/thatoddmailbox/go-ico
 ```
 
 ## Quick Start
+
+### Using the Standard Image Package (Recommended)
+
+```go
+package main
+
+import (
+    "fmt"
+    "image"
+    "os"
+
+    // Import to register ICO format
+    _ "github.com/thatoddmailbox/go-ico"
+)
+
+func main() {
+    file, err := os.Open("favicon.ico")
+    if err != nil {
+        panic(err)
+    }
+    defer file.Close()
+
+    // Decode using standard image package - returns the best image
+    img, format, err := image.Decode(file)
+    if err != nil {
+        panic(err)
+    }
+
+    bounds := img.Bounds()
+    fmt.Printf("Decoded %s image: %dx%d\n", format, bounds.Dx(), bounds.Dy())
+}
+```
+
+### Using the ICO-Specific API
 
 ```go
 package main
@@ -36,7 +71,7 @@ func main() {
     }
     defer file.Close()
 
-    // Decode the ICO file
+    // Decode the ICO file to access all images
     icoFile, err := ico.Decode(file)
     if err != nil {
         panic(err)
@@ -50,6 +85,12 @@ func main() {
     fmt.Printf("Best image size: %dx%d\n", bounds.Dx(), bounds.Dy())
 }
 ```
+
+### Multi-Image Handling
+
+Since ICO files can contain multiple images at different resolutions, the standard image package integration returns the **best** (highest resolution) image when using `image.Decode()`. This provides the most intuitive behavior for most use cases.
+
+If you need access to all images or want to select a specific size, use the ICO-specific API with `ico.Decode()`.
 
 ## API Documentation
 
